@@ -1,4 +1,6 @@
 # coding=utf-8
+__author__ = 'Adamczyk_Tiede_2020'
+__version__ = '2020324_11'
 import json
 from string import ascii_lowercase
 import tempfile
@@ -12,8 +14,7 @@ import datetime
 
 import arcpy
 
-__author__ = 'Adamczyk_Tiede_2015'
-__version__ = '20150715_1835'
+
 
 default_config = {
     'debug': False,

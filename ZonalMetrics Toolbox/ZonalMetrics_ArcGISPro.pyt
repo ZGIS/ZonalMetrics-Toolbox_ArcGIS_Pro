@@ -25,7 +25,7 @@ from tools import log, is_debug, get_field, intersect_analyzed_with_stat_layer, 
 
 __authors_and_citation__ = 'Joanna Adamczyk, Dirk Tiede, ZonalMetrics - a Python toolbox for zonal landscape structure analysis, Computers & Geosciences, Volume 99, February 2017, Pages 91-99, ISSN 0098-3004, http://dx.doi.org/10.1016/j.cageo.2016.11.005'
 __license___ = 'GPL-3 GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007'
-__version__ = '1.0 for ArcGIS 10.1 or newer'
+__version__ = '1.1 for ArcGIS Pro 2.4 or newer'
 
 default_encoding = sys.getdefaultencoding()
 # arcpy.env.scratchWorkspace = get_scratchworkspace()
