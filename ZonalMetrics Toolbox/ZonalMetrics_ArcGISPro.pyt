@@ -1513,12 +1513,12 @@ class CreateHexagons(object):
             direction="Input")
 
         useExtent = arcpy.Parameter(
-            displayName="Hexagon layer extent = display extent",
+            displayName="Select hexagon layer extent",
             name="use_extent",
-            datatype="GPBoolean",
+            datatype="GPExtent",
             parameterType="Required",
             direction="Input")
-        useExtent.value = False
+
 
         clipToInput = arcpy.Parameter(
             displayName="Clip hexagon layer to input area",
@@ -1526,7 +1526,7 @@ class CreateHexagons(object):
             datatype="GPBoolean",
             parameterType="Required",
             direction="Input")
-        clipToInput.value = True
+        clipToInput.value = False
 
         hexHeight = arcpy.Parameter(
             displayName="Hexagon height",
@@ -1569,14 +1569,33 @@ class CreateHexagons(object):
         validation is performed.  This method is called whenever a parameter
         has been changed."""
         input_parameters = ScriptParameters(parameters)
-        if input_parameters.in_area.altered:
+
+        if not input_parameters.in_area.altered:
+                input_parameters.use_extent.enabled = "False"
+        else:
+                input_parameters.use_extent.enabled = "True"
+        if input_parameters.in_area.altered and not input_parameters.in_area.hasBeenValidated:
+            descDS = arcpy.Describe (input_parameters.in_area.valueAsText)
+            fcExtent = descDS.extent
+            input_parameters.use_extent.value = str(fcExtent.XMin) + " " + str(fcExtent.YMin) + " " + str(fcExtent.XMax) + " " + str(fcExtent.YMax)
             # input_parameters.center_fc.value = input_parameters.in_area.value
-            pass
+        #if input_parameters.use_extent.valueAsText == "MAXOF" or input_parameters.use_extent.valueAsText == "MINOF":
+            #descDS = arcpy.Describe (input_parameters.in_area.valueAsText)
+            #fcExtent = descDS.extent
+            #input_parameters.use_extent.value = str(fcExtent.XMin) + " " + str(fcExtent.YMin) + " " + str(fcExtent.XMax) + " " + str(fcExtent.YMax)
+            #input_parameters.use_extent.setWarningMessage ("Union of Inputs or Intersections of Inputs are not allowed. Value replaced by extend of data set!")
         return
 
     def updateMessages(self, parameters):
         """Modify the messages created by internal validation for each tool
         parameter.  This method is called after internal validation."""
+        input_parameters = ScriptParameters(parameters)
+        if input_parameters.use_extent.valueAsText == "MAXOF" or input_parameters.use_extent.valueAsText == "MINOF":
+            input_parameters.use_extent.setWarningMessage ("Union of Inputs or Intersections of Inputs are not allowed. Value replaced by extend of data set!")
+            descDS = arcpy.Describe (input_parameters.in_area.valueAsText)
+            fcExtent = descDS.extent
+            input_parameters.use_extent.value = str(fcExtent.XMin) + " " + str(fcExtent.YMin) + " " + str(fcExtent.XMax) + " " + str(fcExtent.YMax)
+
         return
 
     def execute(self, parameters, messages):
@@ -1585,7 +1604,9 @@ class CreateHexagons(object):
         width = input_parameters.hex_height.value
         hexOut = input_parameters.output_layer.valueAsText
         inputArea = input_parameters.in_area.valueAsText
-        boolExtent = input_parameters.use_extent.value
+        theExtent = input_parameters.use_extent.valueAsText
+        extList = theExtent.split(" ")
+        #boolExtent = input_parameters.use_extent.value
         clipToInput = input_parameters.clip_to_input.value
         centerHexagons = input_parameters.center_hexagons
         centerLayer = input_parameters.center_fc.valueAsText
@@ -1615,9 +1636,9 @@ class CreateHexagons(object):
         log("width: " + str(width))
 
         # Process: Create Extent Information...
-        ll = self.calculateOrigin(inputArea, boolExtent)
+        ll = self.calculateOrigin(inputArea, extList)
         Origin = self.updateOrigin(ll, width, height, -2.0)
-        ur = self.calculateUR(inputArea, boolExtent)
+        ur = self.calculateUR(inputArea, extList)
 
         Opposite_Corner = self.updateOrigin(ur, width, height, 2.0)
         log("origin: " + Origin)
@@ -1671,8 +1692,7 @@ class CreateHexagons(object):
             # Process: Create Thiessen Polygons...
             # Limit Hexagons roughly to the real input data extent:
             arcpy.MakeFeatureLayer_management(Appended_Points, "in_memory\\hexPoints")
-            arcpy.SelectLayerByLocation_management("in_memory\\hexPoints", "WITHIN_A_DISTANCE", inputArea, width * 2,
-                                                   "NEW_SELECTION")
+            #arcpy.SelectLayerByLocation_management("in_memory\\hexPoints", "WITHIN_A_DISTANCE", inputArea, width * 2,"NEW_SELECTION")
             arcpy.CreateThiessenPolygons_analysis("in_memory\\hexPoints", hexBeforeClip, "ONLY_FID")
             log("created thiessen polygons...")
             arcpy.Delete_management(Appended_Points)
@@ -1681,10 +1701,10 @@ class CreateHexagons(object):
                 self.centerHexagons(centerLayer, hexBeforeClip)
 
             # Process: keep Hexagons only
-            # if boolExtent == "false":
+
             if not clipToInput:
                 log("keep only hexagons...")
-                self.deleteNotHexagons(hexBeforeClip, inputArea, height, boolExtent)
+                self.deleteNotHexagons(hexBeforeClip, inputArea, height)
                 arcpy.CopyFeatures_management(hexBeforeClip, hexOut)
             else:
                 log("clipping to input layer area...")
@@ -1718,27 +1738,26 @@ class CreateHexagons(object):
                 ID += 1
         return ID - 1
 
-    def calculateOrigin(self, dataset, boolExtent):
-        if boolExtent == "true":
-            mxd = arcpy.mapping.MapDocument("CURRENT")
-            df = mxd.activeDataFrame
-            ext = df.extent
-            return str(ext.XMin) + " " + str(ext.YMin)
-        else:
-            ext = arcpy.Describe(dataset).extent
-            # coords = ext.split(" ")
-            return str(ext.XMin) + " " + str(ext.YMin)
+    def calculateOrigin(self, dataset, extList):
+            #return XMin and Y Min
+            return str(extList[0]) + " " + str(extList[1])
 
-    def calculateUR(self, dataset, boolExtent):
-        if boolExtent == "true":
-            mxd = arcpy.mapping.MapDocument("CURRENT")
-            df = mxd.activeDataFrame
-            ext = df.extent
-            return str(ext.XMax) + " " + str(ext.YMax)
-        else:
-            ext = arcpy.Describe(dataset).extent
-            # coords = ext.split(" ")
-            return str(ext.XMax) + " " + str(ext.YMax)
+    # def calculateOrigin(self, dataset, boolExtent):
+    #     if boolExtent == "true":
+    #         mxd = arcpy.mapping.MapDocument("CURRENT")
+    #         df = mxd.activeDataFrame
+    #         ext = df.extent
+    #         return str(ext.XMin) + " " + str(ext.YMin)
+    #     else:
+    #         ext = arcpy.Describe(dataset).extent
+    #         # coords = ext.split(" ")
+    #         return str(ext.XMin) + " " + str(ext.YMin)
+
+    def calculateUR(self, dataset, extList):
+
+            #return XMax and Y Max
+            return str(extList[2]) + " " + str(extList[3])
+
 
     def calculateHeight(self, width):
         return float(width) * math.sqrt(3)
@@ -1763,31 +1782,33 @@ class CreateHexagons(object):
         x_opposite = float(coords[0])
         return int((x_opposite - x_origin) / int(width))
 
-    def deleteNotHexagons(self, input1, input2, height, boolExtent):
+    def deleteNotHexagons(self, input1, input2, height): #(hexBeforeClip, inputArea, height)
         geo = arcpy.Geometry()
         geometryList = arcpy.CopyFeatures_management(input2, geo)
         fuzzyArea = 2 * ((float(height) / 2) ** 2) * (3 ** 0.5)
         log("fuzzyArea: " + str(fuzzyArea))
         # unionpoly = arcpy.Polygon()
-        i = 0
-        for poly in geometryList:
-            if i == 0:
-                unionpoly = poly
-            else:
-                unionpoly = unionpoly.union(poly)
-            i = 1
+        #i = 0
+        #for poly in geometryList:
+            #if i == 0:
+                #unionpoly = poly
+            #else:
+                #unionpoly = unionpoly.union(poly)
+            #i = 1
 
         x = 0
         with UpdateCursor(input1, ["SHAPE@"]) as cur:
             for row in cur:
                 feat = row[0]
-                if boolExtent == "false" and feat.disjoint(unionpoly):
-                    cur.deleteRow()
-                    x += 1
-                elif feat.area > (fuzzyArea + 10) or feat.area < (fuzzyArea - 10):
+                #if boolExtent == "false" and feat.disjoint(unionpoly):
+                    #cur.deleteRow()
+                    #x += 1
+                log("current feat fuzzyArea: " + str(feat.area))
+                if feat.area > (fuzzyArea + (height/10)) or feat.area < (fuzzyArea - (height/10)):
                     cur.deleteRow()
                     x += 1
         log("deleted hexagons: " + str(x))
+
 
     def centerHexagons(self, centerLayer, hexesLayer):
         # move hexagons to center of input layer
