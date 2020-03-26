@@ -1,4 +1,4 @@
-# ZonalMetrics-Toolbox
+# ZonalMetrics-Toolbox for ArcGIS Pro
 Version for ArcGIS Pro (Python 3). A version for ArcGIS Desktop (Python 2.x) is available here: https://github.com/ZGIS/ZonalMetrics-Toolbox
 
 How to cite and background information:
