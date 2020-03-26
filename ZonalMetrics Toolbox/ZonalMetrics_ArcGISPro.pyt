@@ -1218,11 +1218,17 @@ class ConnectanceMetricsTool(MetricsCalcTool):
                     connections_cur.insertRow([connection, in_fid, near_fid])
                 del connection
             del polygons, g1_line, g2_line, g1_line_int, g2_line_int, g1_clipped_to_buffer, g2_clipped_to_buffer
-
+        del connections_cur
         connections_polygons_erased = self.create_temp_layer('connections_polygons_erased')
         arcpy.Erase_analysis(in_features=connections_polygons, erase_features=input_layer_dissolved,
                              out_feature_class=connections_polygons_erased)
 
+        #######
+        ##arcpy.CopyFeatures_management(connections_polygons_erased, r"C:\temp\conn_erased.shp")
+        ##arcpy.CopyFeatures_management(connections_polygons, r"C:\temp\conn_polygons.shp")
+        ##arcpy.CopyFeatures_management(input_layer_dissolved, r"C:\temp\input_diss.shp")
+        ##arcpy.CopyFeatures_management(input_simplified, r"C:\temp\input_simple.shp")
+        #########
         lines_buffers_cleaned = self._create_connections_buffers(connections_polygons_erased,
                                                                  input_layer_dissolved, input_simplified,
                                                                  params)
@@ -1320,10 +1326,10 @@ class ConnectanceMetricsTool(MetricsCalcTool):
                               out_dataset=connections_border_lines_buffer,
                               sort_field=[['ORIG_FID', 'ASCENDING']])
         arcpy.AddField_management(in_table=connections_border_lines_buffer, field_name='BUFF_ID', field_type='LONG')
-        cursor = arcpy.da.UpdateCursor(connections_border_lines_buffer, field_names=['OID@', 'BUFF_ID'])
-        for row in cursor:
-            row[1] = row[0]
-            cursor.updateRow(row)
+        with  arcpy.da.UpdateCursor(connections_border_lines_buffer, field_names=['OID@', 'BUFF_ID']) as cursor:
+            for row in cursor:
+                row[1] = row[0]
+                cursor.updateRow(row)
         buffer_input_tabulate_intersect = self.create_temp_layer('buffer_tabulate_intersect')
         arcpy.TabulateIntersection_analysis(
             in_zone_features=connections_border_lines_buffer,
@@ -1342,15 +1348,24 @@ class ConnectanceMetricsTool(MetricsCalcTool):
                                             geometry_type='POLYGON',
                                             spatial_reference=arcpy.Describe(input_simplified).spatialReference)
 
+        with arcpy.da.UpdateCursor(connections_border_lines_buffer,
+                                              field_names=['ORIG_FID', 'PERCENTAGE', 'SHAPE@']) as upCur:
+                for row in upCur:
+                    if not row[1]:
+                        upCur.deleteRow()
+                        arcpy.AddMessage("deleted")
+
         search_cursor = arcpy.da.SearchCursor(connections_border_lines_buffer,
                                               field_names=['ORIG_FID', 'PERCENTAGE', 'SHAPE@'])
+
         with arcpy.da.InsertCursor(lines_buffers_cleaned, field_names=['SHAPE@']) as insert_cursor:
             for key, rrs in itertools.groupby(search_cursor, key=lambda r: r[0]):
                 overlapping_row = max(rrs, key=lambda r: r[1])
+                #arcpy.AddMessage([overlapping_row[0]])
+                #arcpy.AddMessage([overlapping_row[1]])
                 insert_cursor.insertRow([overlapping_row[2]])
 
         return lines_buffers_cleaned
-
     class ConnectanceMetricsParameters(object):
 
         def __init__(self, tool, parameters):
@@ -1579,11 +1594,7 @@ class CreateHexagons(object):
             fcExtent = descDS.extent
             input_parameters.use_extent.value = str(fcExtent.XMin) + " " + str(fcExtent.YMin) + " " + str(fcExtent.XMax) + " " + str(fcExtent.YMax)
             # input_parameters.center_fc.value = input_parameters.in_area.value
-        #if input_parameters.use_extent.valueAsText == "MAXOF" or input_parameters.use_extent.valueAsText == "MINOF":
-            #descDS = arcpy.Describe (input_parameters.in_area.valueAsText)
-            #fcExtent = descDS.extent
-            #input_parameters.use_extent.value = str(fcExtent.XMin) + " " + str(fcExtent.YMin) + " " + str(fcExtent.XMax) + " " + str(fcExtent.YMax)
-            #input_parameters.use_extent.setWarningMessage ("Union of Inputs or Intersections of Inputs are not allowed. Value replaced by extend of data set!")
+
         return
 
     def updateMessages(self, parameters):
@@ -1785,26 +1796,17 @@ class CreateHexagons(object):
     def deleteNotHexagons(self, input1, input2, height): #(hexBeforeClip, inputArea, height)
         geo = arcpy.Geometry()
         geometryList = arcpy.CopyFeatures_management(input2, geo)
-        fuzzyArea = 2 * ((float(height) / 2) ** 2) * (3 ** 0.5)
-        log("fuzzyArea: " + str(fuzzyArea))
-        # unionpoly = arcpy.Polygon()
-        #i = 0
-        #for poly in geometryList:
-            #if i == 0:
-                #unionpoly = poly
-            #else:
-                #unionpoly = unionpoly.union(poly)
-            #i = 1
-
+        #fuzzyArea = 2 * ((float(height) / 2) ** 2) * (3 ** 0.5)
         x = 0
         with UpdateCursor(input1, ["SHAPE@"]) as cur:
             for row in cur:
                 feat = row[0]
-                #if boolExtent == "false" and feat.disjoint(unionpoly):
+                fuzzyWidthHeightratio = feat.extent.width / feat.extent.height
+                log("width /height ratio: " + str(fuzzyWidthHeightratio))
+                #if feat.area > (fuzzyArea + (height/20)) or feat.area < (fuzzyArea - (height/20)):
                     #cur.deleteRow()
                     #x += 1
-                log("current feat fuzzyArea: " + str(feat.area))
-                if feat.area > (fuzzyArea + (height/10)) or feat.area < (fuzzyArea - (height/10)):
+                if feat.pointCount != 7 or fuzzyWidthHeightratio > 1.155 or fuzzyWidthHeightratio < 1.154:
                     cur.deleteRow()
                     x += 1
         log("deleted hexagons: " + str(x))
