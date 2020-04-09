@@ -1616,6 +1616,7 @@ class CreateHexagons(object):
         hexOut = input_parameters.output_layer.valueAsText
         inputArea = input_parameters.in_area.valueAsText
         theExtent = input_parameters.use_extent.valueAsText
+        theExtent = theExtent.replace(",", ".")
         extList = theExtent.split(" ")
         #boolExtent = input_parameters.use_extent.value
         clipToInput = input_parameters.clip_to_input.value
@@ -1750,7 +1751,7 @@ class CreateHexagons(object):
         return ID - 1
 
     def calculateOrigin(self, dataset, extList):
-            #return XMin and Y Min
+            #return XMin and YMin
             return str(extList[0]) + " " + str(extList[1])
 
     # def calculateOrigin(self, dataset, boolExtent):
@@ -1766,7 +1767,7 @@ class CreateHexagons(object):
 
     def calculateUR(self, dataset, extList):
 
-            #return XMax and Y Max
+            #return XMax and YMax
             return str(extList[2]) + " " + str(extList[3])
 
 
