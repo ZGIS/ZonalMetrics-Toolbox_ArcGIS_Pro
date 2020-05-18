@@ -235,8 +235,9 @@ class MetricsCalcTool(object):
             desc = arcpy.Describe(zonal_param.value)
             feature_type = desc.shapeType.lower()
             file_extension = desc.extension
-            if not feature_type == "polygon" or not file_extension == "shp":
-                zonal_param.setErrorMessage("Only polygon shapefiles allowed")
+           # if not feature_type == "polygon" or not file_extension == "shp":
+            if not feature_type == "polygon":
+                zonal_param.setErrorMessage("Only polygon feature classes allowed")
 
         if stat_param.value is None:
             stat_param.clearMessage()
@@ -244,8 +245,9 @@ class MetricsCalcTool(object):
             desc = arcpy.Describe(stat_param.value)
             feature_type = desc.shapeType.lower()
             file_extension = desc.extension
-            if not feature_type == "polygon" or not file_extension == "shp":
-                stat_param.setErrorMessage("Only polygon shapefiles allowed")
+            #if not feature_type == "polygon" or not file_extension == "shp":
+            if not feature_type == "polygon":
+                stat_param.setErrorMessage("Only polygon feature classes allowed")
 
 
 
