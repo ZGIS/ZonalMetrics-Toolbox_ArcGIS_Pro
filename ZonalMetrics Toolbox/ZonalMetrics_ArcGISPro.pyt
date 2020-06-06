@@ -110,7 +110,12 @@ class EnsureUnitIDFieldExists(EnsureFieldExists):
         EnsureFieldExists.update_row(self, fields, row)
         if self.field_added:
             unit_id_idx = fields[UNIT_ID_FIELD_NAME]
-            fid_idx = fields['FID']
+            if "FID" in fields:
+                fid_idx = fields['FID']
+            elif 'OBJECTID' in fields:
+                fid_idx = fields['OBJECTID']
+            else:
+                fid_idx = fields['OID']
             row[unit_id_idx] = row[fid_idx]
 
 
@@ -846,6 +851,7 @@ class EdgeMetricsTool(MetricsCalcTool):
     edge_density_field = 'ed'
 
     def __init__(self):
+
         MetricsCalcTool.__init__(self)
         self.label = 'Edge Metrics'
         self.description = 'Calculates Class Edge lenght (TcE) for all patches of selected classes within the statistical zones'
@@ -877,13 +883,11 @@ class EdgeMetricsTool(MetricsCalcTool):
         msg = "Counting edges lengths"
         log(msg)
         arcpy.SetProgressor("step", msg, 0, int(arcpy.GetCount_management(stat_layer).getOutput(0)), 1)
-
         edgesLayerName = "in_memory\\inputEdges%d" % random.randint(0, 1000000)
         edgesLayerNameLyr = edgesLayerName + 'Layer'
         try:
             arcpy.FeatureToLine_management(input_area, edgesLayerName)
             arcpy.MakeFeatureLayer_management(edgesLayerName, edgesLayerNameLyr)
-
             stat_layer_fields = [UNIT_ID_FIELD_NAME,
                                  self.edge_length_field,
                                  ZONE_AREA_FIELD_NAME,
@@ -1368,6 +1372,7 @@ class ConnectanceMetricsTool(MetricsCalcTool):
                 insert_cursor.insertRow([overlapping_row[2]])
 
         return lines_buffers_cleaned
+
     class ConnectanceMetricsParameters(object):
 
         def __init__(self, tool, parameters):
