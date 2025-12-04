@@ -8,7 +8,7 @@ import arcpy
 # noinspection PyUnresolvedReferences
 from arcpy.da import SearchCursor, UpdateCursor, InsertCursor
 import itertools
-import importlib  # Changed from 'imp' for Python 3.12+ compatibility
+import importlib  # Changed from 'imp' for Python 3.13 compatibility (ArcGIS Pro 3.6)
 
 ZONE_AREA_FIELD_NAME = "zone_area"
 UNIT_ID_FIELD_NAME = "unitID"
