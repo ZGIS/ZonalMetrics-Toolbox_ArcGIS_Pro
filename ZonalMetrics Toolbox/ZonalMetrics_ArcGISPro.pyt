@@ -4,31 +4,24 @@ from collections import Counter, OrderedDict
 import random
 import sys
 import os
-
 import arcpy
-
-
 # noinspection PyUnresolvedReferences
 from arcpy.da import SearchCursor, UpdateCursor, InsertCursor
 import itertools
-import imp
+import importlib  # Changed from 'imp' for Python 3.13 compatibility (ArcGIS Pro 3.6)
 
 ZONE_AREA_FIELD_NAME = "zone_area"
 UNIT_ID_FIELD_NAME = "unitID"
-
 if 'tools' in sys.modules:
-    imp.reload(sys.modules['tools'])
+    importlib.reload(sys.modules['tools'])
 from tools import log, is_debug, get_field, intersect_analyzed_with_stat_layer, \
     FieldNotFoundException, ScriptParameters, \
     getParameterValues, handleException, delete_if_exists, createTempLayer, select_features_from_feature_class, \
     setup_debug_mode, enum, create_temp_layer_name, on_debug, get_scratchworkspace, log_debug
-
 __authors_and_citation__ = 'Joanna Adamczyk, Dirk Tiede, ZonalMetrics - a Python toolbox for zonal landscape structure analysis, Computers & Geosciences, Volume 99, February 2017, Pages 91-99, ISSN 0098-3004, http://dx.doi.org/10.1016/j.cageo.2016.11.005'
 __license___ = 'GPL-3 GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007'
-__version__ = '1.1 for ArcGIS Pro 2.4 or newer'
-
+__version__ = '1.1.1 for ArcGIS Pro 3.6+'
 default_encoding = sys.getdefaultencoding()
-# arcpy.env.scratchWorkspace = get_scratchworkspace()
 
 
 class Toolbox(object):
